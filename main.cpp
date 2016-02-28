@@ -1,20 +1,13 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * This demo provides the samples for reading GeoTiff and Shapefile.
  */
 
 /* 
  * File:   main.cpp
- * Author: Trung
- *
- * Created on February 24, 2016, 10:35 PM
  */
 
 #include <cstdlib>
 #include <stdio.h>
-#include <iostream>
-#include <fstream>
 #include <cstdio>
 #include <string>
 #include "gdal_priv.h"      // For C++ and C
@@ -28,8 +21,9 @@ using namespace std;
  */
 int main(int argc, char** argv) {
     
-     // dataset name
-    string fileName = "datasamples/SatelliteDataSample.tif";
+    /***************************** Read GeoTiff *******************************/
+    // dataset name
+    string fileName = "datasamples/SatelliteDataSample.tif"; 
     
     // Open the file
     GDALAllRegister();
@@ -53,6 +47,53 @@ int main(int argc, char** argv) {
 
     // Get band 1 from satellite image
     GDALDatasetH hBand = GDALGetRasterBand( hDataset, 1 );
+    
+    
+    /*************************** Read Shapefile *******************************/
+    printf( "Reading shapefile\n" );
+    // Open Shapefe
+    GDALDatasetH hDS;
+    hDS = GDALOpenEx( "datasamples/Cities.shp", GDAL_OF_VECTOR, NULL, NULL, NULL );
+    if( hDS == NULL ) {
+        printf( "Open failed.\n" ); exit( 1 );
+    }
+    
+    // load data layer
+    OGRLayerH hLayer;
+    hLayer = GDALDatasetGetLayerByName( hDS, "Cities" );
+    
+    // loop on the feature
+    OGRFeatureH hFeature;
+    OGR_L_ResetReading(hLayer);
+    while( (hFeature = OGR_L_GetNextFeature(hLayer)) != NULL ){
+        OGRFeatureDefnH hFDefn = OGR_L_GetLayerDefn(hLayer);
+        int iField;
+        printf( "\n" );
+        // print the attributes
+        for( iField = 0; iField < OGR_FD_GetFieldCount(hFDefn); iField++ )
+        {
+            OGRFieldDefnH hFieldDefn = OGR_FD_GetFieldDefn( hFDefn, iField );
+            if( OGR_Fld_GetType(hFieldDefn) == OFTInteger )
+                printf( "%d,", OGR_F_GetFieldAsInteger( hFeature, iField ) );
+            else if( OGR_Fld_GetType(hFieldDefn) == OFTInteger64 )
+                printf( CPL_FRMT_GIB ",", OGR_F_GetFieldAsInteger64( hFeature, iField ) );
+            else if( OGR_Fld_GetType(hFieldDefn) == OFTReal )
+                printf( "%.3f,", OGR_F_GetFieldAsDouble( hFeature, iField) );
+            else if( OGR_Fld_GetType(hFieldDefn) == OFTString )
+                printf( "%20s,", OGR_F_GetFieldAsString( hFeature, iField) );
+            else
+                printf( "%20s,", OGR_F_GetFieldAsString( hFeature, iField) );
+        }
+        
+        // print geometry
+        OGRGeometryH hGeometry;
+        hGeometry = OGR_F_GetGeometryRef(hFeature);
+        if( hGeometry != NULL && wkbFlatten(OGR_G_GetGeometryType(hGeometry)) == wkbPoint ) {
+            printf( "%10.4f,%10.4f", OGR_G_GetX(hGeometry, 0), OGR_G_GetY(hGeometry, 0) );
+        } else {
+            printf( "no point geometry\n" );
+        }
+    }
 
     return 0;
 }
